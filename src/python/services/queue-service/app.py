@@ -10,9 +10,9 @@ from azure.identity import (
     EnvironmentCredential,
 )
 from azure.storage.queue import QueueServiceClient
+from azure.table import TableServiceClient
 from azure.ai.formrecognizer import FormRecognizerClient
 from azure.ai.textanalytics import TextAnalyticsClient
-from azure.cosmos import CosmosClient
 
 from smart_getenv import getenv
 from dotmap import DotMap
@@ -42,17 +42,12 @@ ta_client = TextAnalyticsClient(
     endpoint=getenv("AZURE_TEXT_ANALYTICS_ENDPOINT"), credential=credential
 )
 
-cosmos_client = CosmosClient(
-    url=getenv("AZURE_COSMOS_ENDPOINT"), credential=getenv("AZURE_COSMOS_KEY")
+table_service_client = TableServiceClient(
+    account_url=getenv("AZURE_TABLE_ENDPOINT"), credential=credential
 )
 
-cosmos_database_client = cosmos_client.get_database_client(
-    getenv("AZURE_COSMOS_DB", default="azimageai")
-)
+table_client = table_service_client.get_table_client(table="azimageai")
 
-cosmos_container_client = cosmos_database_client.get_container_client(
-    getenv("AZURE_COSMOS_CONTAINER", default="images")
-)
 
 while True:
 
@@ -83,7 +78,7 @@ while True:
                     print(doc.sentiment)
                     message_json.sentiment = doc.sentiment
 
-                cosmos_container_client.upsert_item(message_json.toDict())
+                table_client.upsert_entity(mode="replace", table_entity_properties=message_json.toDict())
 
                 queue_client.delete_message(message)
 
